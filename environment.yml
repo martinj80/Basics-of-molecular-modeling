@@ -1,0 +1,11 @@
+name: basics-of-molecular-modeling
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8.13
+  - numpy=1.23.3
+  - pandas=1.4.4
+  - rdkit=2022.09.1
+  - mols2grid=1.0.0
+  - matplotlib
+  - openbabel=3.1.1
