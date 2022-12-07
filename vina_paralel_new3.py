@@ -1,13 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor
-from zipfile import ZipFile
+import argparse
 import glob
 import os
-import sys
-from sys import platform
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from os.path import isdir, isfile, exists, join, splitext, basename
+from os.path import isdir, exists, join, splitext, basename
+from pathlib import Path
 from subprocess import run
+from sys import platform
 
 """
 This script assumes the folder containing ligands (variable :liglib:) is in the path (current working directory).
@@ -18,6 +17,7 @@ Note: Argument --cpu should not be used in the configuration file as it is passe
 :core_in:   number of core used for each ligand (equivalent to vina --cpu setting)
 :par_run:   number of parallel runs to be used
 """
+
 
 def validate_inputs(receptor, liglib, conf, vina):
     if not isdir(liglib):
@@ -41,21 +41,22 @@ def run_vina(lig):
     :lig:   ligand to dock
     """
     filename = splitext(basename(lig))[0]
-    command = vina + ' --cpu "{0}" --config "{1}" --receptor "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(core_in, conf, receptor, lig, Path(outputdir, filename))
-    
-    #print(command)
+    command = vina + ' --cpu "{0}" --config "{1}" --receptor "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(
+        core_in, conf, receptor, lig, Path(outputdir, filename))
+
+    # print(command)
     if exists(Path(outputdir, filename + "_out.pdbqt")) and exists(Path(outputdir, filename + ".out")):
         with open(Path(outputdir, filename + ".out"), "r") as log:
             for line in log:
                 if "***************************************************" in line.strip():
                     PIPE.write("Ligand already docked: {}.pdbqt\n".format(filename))
-                    
+
                     # print("Ligand already docked: {}.pdbqt".format(filename))
                     return
 
     PIPE.write("Docking: {}\n".format(filename))
     # print("Docking: {}".format(filename))
-    
+
     run(command, stdout=PIPE, stderr=PIPE, shell=True)
 
 
@@ -70,7 +71,6 @@ elif platform == "darwin":
 elif platform == "win32":
     vina = "vina_1.2.3_windows_x86_64.exe"
 
-import argparse
 parser = argparse.ArgumentParser(description="Python parallel docking using AutoDock Vina")
 
 parser.add_argument('--receptor',
@@ -92,11 +92,11 @@ parser.add_argument('--conf',
 
 args = vars(parser.parse_args())
 # print(args)
-receptor, ligands, outputdir, conf = args["receptor"], args["ligands"], args["outputdir"], args["conf"]
+receptor, liglib, outputdir, conf = args["receptor"], args["ligands"], args["outputdir"], args["conf"]
 
 if receptor is None: receptor = glob.glob("*.pdbqt")[0]
-if ligands is None: liglib = "Ligands/"
-if outputdir is None: outputdir = liglib+"docked/"
+if liglib is None: liglib = "Ligands/"
+if outputdir is None: outputdir = liglib + "docked/"
 if conf is None: conf = "config.txt"
 
 par_run = input("Set number of concurrent runs:(2) ")
@@ -109,7 +109,7 @@ validate_inputs(receptor, liglib, conf, vina)
 try:
     print("Trying to create output folder {}".format(outputdir))
     os.mkdir(outputdir)
-except:
+except FileExistsError:
     print("Folder already exists...")
 
 ligs = glob.glob(join(liglib, "*.pdbqt"))

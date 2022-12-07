@@ -1,2 +1,4 @@
 .idea/
 .idea/*
+Ligands/docked/*.pdbqt
+Ligands/docked/*.out
