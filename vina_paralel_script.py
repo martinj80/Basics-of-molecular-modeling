@@ -24,7 +24,7 @@ def validate_inputs(receptor, liglib, conf, vina):
         input("Directory with ligands ({}) not found. Exiting...".format(liglib))
         exit()
     if not exists(vina):
-        input("Vina executable not found in {}. Exiting...".format(vina))
+        input("Vina executable {} not found in current folder. Exiting...".format(vina))
         exit()
     if not exists(receptor):
         input("Receptor {} not found. Exiting...".format(receptor))
@@ -69,7 +69,8 @@ elif platform == "darwin":
     pass
     # OS X
 elif platform == "win32":
-    vina = "vina_1.2.3_windows_x86_64.exe"
+    vina = glob.glob("vina*.exe")[0]
+    # vina = "vina_1.2.3_windows_x86_64.exe"
 
 parser = argparse.ArgumentParser(description="Python parallel docking using AutoDock Vina")
 
