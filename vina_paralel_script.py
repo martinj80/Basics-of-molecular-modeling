@@ -50,8 +50,6 @@ def run_vina(lig):
             for line in log:
                 if "***************************************************" in line.strip():
                     PIPE.write("Ligand already docked: {}.pdbqt\n".format(filename))
-
-                    # print("Ligand already docked: {}.pdbqt".format(filename))
                     return
 
     PIPE.write("Docking: {}\n".format(filename))
@@ -107,7 +105,7 @@ if __name__ == "__main__":
     if receptor is None: receptor = glob.glob("*receptor*.pdbqt")[0]
     if liglib is None: liglib = "Ligands/"
     if outputdir is None: outputdir = liglib + "docked/"
-    if conf is None: conf = glob.glob("*config*.*")[0]
+    if conf is None: conf = glob.glob("*.conf")[0]
 
     par_run = input("Set number of concurrent runs:(4) ")
     core_in = input("Set number of cores per run:  (1) ")
@@ -151,5 +149,5 @@ if __name__ == "__main__":
 
     print("\nDocking started: {0}".format(starttime.time()))
     print("Docking ended: {0}\nTotal time: {1}".format(endtime.time(), difference))
-    print(f"Docked {len(ligs)} compounds.")
+    print(f"Docked {len(glob.glob(outputdir+'*.pdbqt'))} compounds.")
     input("Press any key to exit...")
