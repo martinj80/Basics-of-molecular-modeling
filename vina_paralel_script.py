@@ -1,13 +1,14 @@
 import argparse
 import glob
 import os
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os.path import isdir, exists, join, splitext, basename
 from pathlib import Path
-from subprocess import run
+from subprocess import run, PIPE
 from sys import platform
-
+from time import gmtime, strftime
 """
 This script assumes the folder containing ligands (variable :liglib:) is in the path (current working directory).
 Same applies for the receptor (variable :receptor:) and for the Vina configuration file (variable :conf:).
@@ -18,6 +19,14 @@ Note: Argument --cpu should not be used in the configuration file as it is passe
 :par_run:   number of parallel runs to be used
 """
 
+# create a log file
+log_file = f'vina_{strftime("%d%b%Y_%H%M%S", gmtime())}.log'
+try:
+    os.remove(log_file)
+except FileNotFoundError:
+    pass
+
+logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.INFO)
 
 def validate_inputs(receptor, liglib, conf, vina):
     if not isdir(liglib):
@@ -35,30 +44,31 @@ def validate_inputs(receptor, liglib, conf, vina):
 
 
 def run_vina(lig):
-    """
-    Docking function, checking for previously succesfull docking runs.
-
+    """Docking function, with checking for previous successfull docking runs.
     :lig:   ligand to dock
     """
-    global vina, PIPE, core_in, conf, receptor, outputdir
+    global log_file, vina, core_in, conf, receptor, outputdir
     filename = splitext(basename(lig))[0]
 
     command = vina + ' --cpu "{0}" --config "{1}" --receptor "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(core_in, conf, receptor, lig, Path(outputdir, filename))
-
+    # Check if out files exist and are valid
     if exists(Path(outputdir, filename + "_out.pdbqt")) and exists(Path(outputdir, filename + ".out")):
         with open(Path(outputdir, filename + ".out"), "r") as log:
             for line in log:
                 if "***************************************************" in line.strip():
-                    PIPE.write("Ligand already docked: {}.pdbqt\n".format(filename))
+                    logging.info("Ligand already docked: {}.pdbqt\n".format(filename))
                     return
 
-    PIPE.write("Docking: {}\n".format(filename))
+    logging.info("Docking: {}\n".format(filename))
+    process = run(command, capture_output=True, shell=True)
+    logging.error(f"{filename}\n{process.stderr.decode()}")
 
-    run(command, stdout=PIPE, stderr=PIPE, shell=True)
+    return
 
 
 def parse_cmd():
-
+    """Parse supplied command-line options if used as a script
+    """
     parser = argparse.ArgumentParser(description="Python parallel docking using AutoDock Vina")
 
     parser.add_argument('--receptor',
@@ -77,6 +87,10 @@ def parse_cmd():
                         type=str, nargs=1,
                         default=None,
                         help='Vina configuration file')
+    parser.add_argument('--vina',
+                        type=str, nargs=1,
+                        default=None,
+                        help='Vina binary path')
 
     return vars(parser.parse_args())
 
@@ -86,21 +100,23 @@ if __name__ == "__main__":
     print("Current working directory:", os.getcwd())
 
     args = parse_cmd()
+    receptor, liglib, outputdir, conf, vina = args["receptor"], args["ligands"], args["outputdir"], args["conf"], args["vina"]
 
     if platform == "linux" or platform == "linux2":
-        vina = "./vina_1.2.3_linux_x86_64"
+        if vina is None:
+            vina = "./vina_1.2.3_linux_x86_64"
     elif platform == "darwin":
         pass
         # OS X
     elif platform == "win32":
-        try:
-            vina = glob.glob("vina*.exe")[0]
-        except:
-            pass
-        # vina = "vina_1.2.3_windows_x86_64.exe"
-        print(f"Vina binary to be used: {vina}")
+        if vina is None:
+            try:
+                vina = glob.glob("vina*.exe")[0]  # vina = "vina_1.2.3_windows_x86_64.exe"
+            except Exception as e:
+                print(e)
+                pass
+    print(f"Vina binary to be used: {vina}")
 
-    receptor, liglib, outputdir, conf = args["receptor"], args["ligands"], args["outputdir"], args["conf"]
 
     if receptor is None: receptor = glob.glob("*receptor*.pdbqt")[0]
     if liglib is None: liglib = "Ligands/"
@@ -139,12 +155,10 @@ if __name__ == "__main__":
     input("Press any key to start...")
     starttime = datetime.now()
     print("\nDocking started: {0}".format(starttime.time()))
-    PIPE = open("vina_paralel_new.log", "w+")
     with ThreadPoolExecutor(max_workers=int(par_run)) as executor:
         executor.map(run_vina, ligs, timeout=10)
     endtime = datetime.now()
     difference = endtime - starttime
-    PIPE.close()
     #
 
     print("\nDocking started: {0}".format(starttime.time()))
