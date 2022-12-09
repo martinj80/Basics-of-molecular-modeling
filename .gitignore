@@ -2,3 +2,5 @@
 .idea/*
 Ligands/
 Ligands/*
+vina*.exe
+vina*.log
