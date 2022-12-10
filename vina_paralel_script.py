@@ -50,7 +50,7 @@ def run_vina(lig):
     global log_file, vina, core_in, conf, receptor, outputdir
     filename = splitext(basename(lig))[0]
 
-    command = vina + ' --cpu "{0}" --config "{1}" --receptor "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(core_in, conf, receptor, lig, Path(outputdir, filename))
+    command = vina + ' --cpu "{0}" --config "{1}" --recepto "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(core_in, conf, receptor, lig, Path(outputdir, filename))
     # Check if out files exist and are valid
     if exists(Path(outputdir, filename + "_out.pdbqt")) and exists(Path(outputdir, filename + ".out")):
         with open(Path(outputdir, filename + ".out"), "r") as log:
@@ -61,7 +61,9 @@ def run_vina(lig):
 
     logging.info("Docking: {}\n".format(filename))
     process = run(command, capture_output=True, shell=True)
-    logging.error(f"{filename}\n{process.stderr.decode()}")
+
+    if process.returncode != 0:
+        logging.error(f"{filename}\n{process.stderr.decode()}")
 
     return
 
@@ -112,9 +114,10 @@ if __name__ == "__main__":
         if vina is None:
             try:
                 vina = glob.glob("vina*.exe")[0]  # vina = "vina_1.2.3_windows_x86_64.exe"
-            except Exception as e:
-                print(e)
-                pass
+            except IndexError:
+                print("Vina binary not found in current directory.")
+                input("Press any key to exit")
+                exit()
     print(f"Vina binary to be used: {vina}")
 
 

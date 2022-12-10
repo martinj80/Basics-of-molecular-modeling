@@ -10,5 +10,6 @@ dependencies:
   - mols2grid=1.0.0
   - matplotlib
   - openbabel=3.1.1
+  - scipy=1.9.3
   - pip:
     - meeko==0.4.0
