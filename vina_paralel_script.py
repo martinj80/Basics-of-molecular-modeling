@@ -122,9 +122,13 @@ if __name__ == "__main__":
 
 
     if receptor is None: receptor = glob.glob("*receptor*.pdbqt")[0]
+    else: receptor = receptor[0]
     if liglib is None: liglib = "Ligands/"
+    else: liglib = liglib[0]
     if outputdir is None: outputdir = liglib + "docked/"
+    else: outputdir = outputdir[0]
     if conf is None: conf = glob.glob("*.conf")[0]
+    else: conf = conf[0]
 
     par_run = input("Set number of concurrent runs:(4) ")
     core_in = input("Set number of cores per run:  (1) ")
