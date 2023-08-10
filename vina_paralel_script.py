@@ -1,14 +1,15 @@
 import argparse
-import glob
-import os
+from re import sub
+from glob import glob
+from os import remove, getcwd, mkdir
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os.path import isdir, exists, join, splitext, basename
-from pathlib import Path
-from subprocess import run, PIPE
+from subprocess import run
 from sys import platform
 from time import gmtime, strftime
+
 """
 This script assumes the folder containing ligands (variable :liglib:) is in the path (current working directory).
 Same applies for the receptor (variable :receptor:) and for the Vina configuration file (variable :conf:).
@@ -22,11 +23,10 @@ Note: Argument --cpu should not be used in the configuration file as it is passe
 # create a log file
 log_file = f'vina_{strftime("%d%b%Y_%H%M%S", gmtime())}.log'
 try:
-    os.remove(log_file)
+    remove(log_file)
 except FileNotFoundError:
     pass
 
-logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.INFO)
 
 def validate_inputs(receptor, liglib, conf, vina):
     if not isdir(liglib):
@@ -44,16 +44,17 @@ def validate_inputs(receptor, liglib, conf, vina):
 
 
 def run_vina(lig):
-    """Docking function, with checking for previous successfull docking runs.
+    """Docking function, with checking for previous successful docking runs.
     :lig:   ligand to dock
     """
     global log_file, vina, core_in, conf, receptor, outputdir
     filename = splitext(basename(lig))[0]
 
-    command = vina + ' --cpu "{0}" --config "{1}" --receptor "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(core_in, conf, receptor, lig, Path(outputdir, filename))
-    # Check if out files exist and are valid
-    if exists(Path(outputdir, filename + "_out.pdbqt")) and exists(Path(outputdir, filename + ".out")):
-        with open(Path(outputdir, filename + ".out"), "r") as log:
+    command = vina + ' --cpu "{0}" --config "{1}" --receptor "{2}" --ligand "{3}" --out "{4}_out.pdbqt" > "{4}.out"'.format(
+        core_in, conf, receptor, lig, join(outputdir, filename))
+    # Check if out files exist and if they are valid
+    if exists(join(outputdir, filename + "_out.pdbqt")) and exists(join(outputdir, filename + ".out")):
+        with open(join(outputdir, filename + ".out"), "r") as log:
             for line in log:
                 if "***************************************************" in line.strip():
                     logging.info("Ligand already docked: {}.pdbqt\n".format(filename))
@@ -91,16 +92,14 @@ def parse_cmd():
                         type=str, nargs=1,
                         default=None,
                         help='Vina binary path')
-
-    return vars(parser.parse_args())
+    args = vars(parser.parse_args())
+    return args["receptor"], args["ligands"], args["outputdir"], args["conf"], args["vina"]
 
 
 if __name__ == "__main__":
-    # print("""Usage: vina_paralel_new2.py receptor [path_to_ligands/]""")
-    print("Current working directory:", os.getcwd())
+    print("Current working directory:", getcwd())
 
-    args = parse_cmd()
-    receptor, liglib, outputdir, conf, vina = args["receptor"], args["ligands"], args["outputdir"], args["conf"], args["vina"]
+    receptor, liglib, outputdir, conf, vina = parse_cmd()
 
     if platform == "linux" or platform == "linux2":
         if vina is None:
@@ -111,17 +110,32 @@ if __name__ == "__main__":
     elif platform == "win32":
         if vina is None:
             try:
-                vina = glob.glob("vina*.exe")[0]  # vina = "vina_1.2.3_windows_x86_64.exe"
+                vina = glob("vina*.exe")[0]  # vina = "vina_1.2.3_windows_x86_64.exe"
             except Exception as e:
                 print(e)
                 pass
+        else:
+            vina = vina[0]
     print(f"Vina binary to be used: {vina}")
 
-
-    if receptor is None: receptor = glob.glob("*receptor*.pdbqt")[0]
-    if liglib is None: liglib = "Ligands/"
-    if outputdir is None: outputdir = liglib + "docked/"
-    if conf is None: conf = glob.glob("*.conf")[0]
+    if receptor is None:
+        try:
+            receptor = glob("*receptor*.pdbqt")[0]
+        except:  # TODO specify exception if no such file is found
+            found = False
+            while not found:
+                print("PDBQT files found:", glob("*.pdbqt"))
+                receptor = input("No PDBQT containing substring *receptor* found, input filename for the receptor: ")
+                if exists(receptor):
+                    break
+                else:
+                    print(f"File {receptor} not found, enter valid filename.")
+    if liglib is None:
+        liglib = "ligands"
+    else:
+        liglib = sub(r"[\\/]", "", liglib[0])  # liglib[0].replace("\\", "").replace("/", "")
+    if outputdir is None: outputdir = liglib + "_docked"  # os.path.join(liglib, "docked")
+    if conf is None: conf = glob("*.conf")[0]
 
     par_run = input("Set number of concurrent runs:(4) ")
     core_in = input("Set number of cores per run:  (1) ")
@@ -133,14 +147,14 @@ if __name__ == "__main__":
     validate_inputs(receptor, liglib, conf, vina)
 
     try:
-        os.mkdir(outputdir)
+        mkdir(outputdir)
         print("Created output folder {}".format(outputdir))
     except FileExistsError:
         pass
         # print(f"Outputs will be saved to {outputdir}...")
     print(f"Outputs will be saved to {outputdir}...")
 
-    ligs = glob.glob(join(liglib, "*.pdbqt"))
+    ligs = glob(join(liglib, "*.pdbqt"))
 
     print(f"""\nPARAMETERS OF Vina RUN:
     Vina executable:    {vina}
@@ -153,15 +167,21 @@ if __name__ == "__main__":
 
     #
     input("Press any key to start...")
+    logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.INFO)
+
+    previous_run = len(glob(join(outputdir, '*.pdbqt')))
+
     starttime = datetime.now()
     print("\nDocking started: {0}".format(starttime.time()))
     with ThreadPoolExecutor(max_workers=int(par_run)) as executor:
         executor.map(run_vina, ligs, timeout=10)
     endtime = datetime.now()
     difference = endtime - starttime
+
+    current_run = len(glob(join(outputdir, '*.pdbqt'))) - previous_run
     #
 
     print("\nDocking started: {0}".format(starttime.time()))
     print("Docking ended: {0}\nTotal time: {1}".format(endtime.time(), difference))
-    print(f"Docked {len(glob.glob(outputdir+'*.pdbqt'))} compounds.")
+    print(f"Docked {current_run} compounds. (Outputs directory contained {previous_run} outputs from previous runs.)")
     input("Press any key to exit...")
