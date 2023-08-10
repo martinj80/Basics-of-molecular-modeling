@@ -62,7 +62,9 @@ def run_vina(lig):
 
     logging.info("Docking: {}\n".format(filename))
     process = run(command, capture_output=True, shell=True)
-    logging.error(f"{filename}\n{process.stderr.decode()}")
+
+    if process.returncode != 0:
+        logging.error(f"{filename}\n{process.stderr.decode()}")
 
     return
 
