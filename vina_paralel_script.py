@@ -10,6 +10,8 @@ from subprocess import run
 from sys import platform
 from time import gmtime, strftime
 
+#TODO: use Path object to be platform independent
+
 """
 This script assumes the folder containing ligands (variable :liglib:) is in the path (current working directory).
 Same applies for the receptor (variable :receptor:) and for the Vina configuration file (variable :conf:).
@@ -77,7 +79,7 @@ def parse_cmd():
     parser.add_argument('--receptor',
                         type=str, nargs=1,
                         default=None,
-                        help='receptor to be used (default first *.pdbqt file in current directory)')
+                        help='receptor to be used (default first *receptor*.pdbqt file in the current directory)')
     parser.add_argument('--ligands',
                         type=str, nargs=1,
                         default=None,
@@ -132,10 +134,12 @@ if __name__ == "__main__":
                     break
                 else:
                     print(f"File {receptor} not found, enter valid filename.")
+
     if liglib is None:
         liglib = "ligands"
     else:
         liglib = sub(r"[\\/]", "", liglib[0])  # liglib[0].replace("\\", "").replace("/", "")
+
     if outputdir is None: outputdir = liglib + "_docked"  # os.path.join(liglib, "docked")
     if conf is None: conf = glob("*.conf")[0]
 
