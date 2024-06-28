@@ -97,6 +97,7 @@ def parse_cmd():
                         default=None,
                         help='Vina binary path')
     args = vars(parser.parse_args())
+    print(args)
     return args["receptor"], args["ligands"], args["outputdir"], args["conf"], args["vina"]
 
 
@@ -104,6 +105,7 @@ if __name__ == "__main__":
     print("Current working directory:", getcwd())
 
     receptor, liglib, outputdir, conf, vina = parse_cmd()
+
 
     if platform == "linux" or platform == "linux2":
         if vina is None:
@@ -134,14 +136,23 @@ if __name__ == "__main__":
                     break
                 else:
                     print(f"File {receptor} not found, enter valid filename.")
+    else:
+        receptor = receptor[0]
 
     if liglib is None:
         liglib = "ligands"
     else:
         liglib = sub(r"[\\/]", "", liglib[0])  # liglib[0].replace("\\", "").replace("/", "")
 
-    if outputdir is None: outputdir = liglib + "_docked"  # os.path.join(liglib, "docked")
-    if conf is None: conf = glob("*.conf")[0]
+    if outputdir is None:
+        outputdir = liglib + "_docked"  # os.path.join(liglib, "docked")
+    else:
+        outputdir = outputdir[0]
+
+    if conf is None:
+        conf = glob("*.conf")[0]
+    else:
+        conf=conf[0]
 
     par_run = input("Set number of concurrent runs:(4) ")
     core_in = input("Set number of cores per run:  (1) ")
