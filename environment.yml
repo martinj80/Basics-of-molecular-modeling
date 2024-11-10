@@ -2,14 +2,15 @@ name: basics-of-molecular-modeling
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
-  - pip
+  - python=3.9.20
+  - pip=24.3.1
   - numpy=1.23
-  - pandas=1.4
+  - pandas=1.4.4
   - rdkit=2022.09.1
   - mols2grid=1.0.0
-  - matplotlib
+  - matplotlib=3.9.2
   - openbabel=3.1.1
   - scipy=1.9.3
+  - jupyterlab=4.2.5
   - pip:
     - meeko==0.4.0
