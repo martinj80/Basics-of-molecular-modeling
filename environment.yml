@@ -2,7 +2,7 @@ name: basics-of-molecular-modeling
 channels:
   - conda-forge
 dependencies:
-  - python=3.9.20
+  - python=3.10
   - pip=24.3.1
   - numpy=1.23
   - pandas=1.4.4
